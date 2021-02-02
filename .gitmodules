@@ -1,0 +1,6 @@
+[submodule "Relanota.Core"]
+	path = Relanota.Core
+	url = https://github.com/Zaph-x/Relanota.Core
+[submodule "gui.cs"]
+	path = gui.cs
+	url = https://github.com/migueldeicaza/gui.cs.git
