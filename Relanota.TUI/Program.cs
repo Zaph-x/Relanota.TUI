@@ -9,9 +9,17 @@ namespace Relanota.TUI
         static void Main(string[] args)
         {
             Application.Init();
-
-            Application.Top.Add(new Relanota());
-
+            Application.UseSystemConsole = true;
+            Relanota relanota = new Relanota();
+            relanota.ColorScheme = Colors.TopLevel;
+            StatusBar status = new StatusBar();
+            status.Items = new[] {
+                new StatusItem(Key.F | Key.AltMask, "~Alt-F~: Find", relanota.FocusSearch),
+                new StatusItem(Key.N | Key.CtrlMask, "~Ctrl-N~: New", relanota.New),
+                new StatusItem(Key.S | Key.CtrlMask, "~Ctrl-S~: Save", relanota.Save),
+            };
+            Application.Current.ColorScheme = Colors.TopLevel;
+            Application.Top.Add(relanota, status);
             Application.Run();
         }
 
