@@ -1,5 +1,6 @@
 ﻿using Core.Objects.Entities;
 using Core.SqlHelper;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,7 @@ namespace Relanota.TUI.Components
         private void NotesList_OpenSelectedItem(ListViewItemEventArgs obj)
         {
             Relanota.LoadNote(obj.Value as Note);
+            Relanota.TagsList.SetFromNote((obj.Value as Note).Name);
         }
 
         private static string NoteToString(Note note)
@@ -41,6 +43,20 @@ namespace Relanota.TUI.Components
             using (Database context = new Database())
             {
                 Notes = context.Notes.Where(n => n.Name.ToLower().Contains(pred.ToLower())).OrderBy(n => n.Name).ToList();
+            }
+            this.SetSource(Notes);
+        }
+
+        public void SearchFromTag(string name)
+        {
+            using (Database context = new Database())
+            {
+                Notes = context.Notes
+                    .Include(n => n.NoteTags)
+                    .ThenInclude(nt => nt.Tag)
+                    .Where(n => n.NoteTags
+                        .Any(nt => nt.Tag.Name.ToLower() == name.ToLower()))
+                .ToList();
             }
             this.SetSource(Notes);
         }

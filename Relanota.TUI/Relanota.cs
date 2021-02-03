@@ -18,7 +18,8 @@ namespace Relanota.TUI
 
         View CurrView { get; set; }
         Note Note { get; set; }
-        NotesList NotesList { get; set; }
+        public NotesList NotesList { get; set; }
+        public TagsList TagsList { get; set; }
 
         TextField nameView;
         TextView contentView;
@@ -58,14 +59,6 @@ namespace Relanota.TUI
 
         private void Init()
         {
-            //Colors.TopLevel.Normal = MakeColor(ConsoleColor.Green, ConsoleColor.Black);
-            //Colors.TopLevel.Focus = MakeColor(ConsoleColor.White, ConsoleColor.DarkCyan);
-            //Colors.TopLevel.HotNormal = MakeColor(ConsoleColor.DarkYellow, ConsoleColor.Black);
-            //Colors.TopLevel.HotFocus = MakeColor(ConsoleColor.Gray, ConsoleColor.DarkCyan);
-            //Colors.TopLevel.Disabled = MakeColor(ConsoleColor.Gray, ConsoleColor.Black);
-
-
-
             Button newButton = new Button("_New Note") { Width = Dim.Percent(20) };
             Button saveButton = new Button("_Save Note") { Width = Dim.Percent(20), Y = Pos.Bottom(newButton), Height = 1 };
             Label notesLabel = new Label("Notes:") { Width = Dim.Percent(20), Y = Pos.Bottom(saveButton) + 1 };
@@ -97,16 +90,17 @@ namespace Relanota.TUI
             {
                 X = Pos.Right(saveButton) + 1,
                 Height = 1,
-                Width = Dim.Fill(),
+                Width = Dim.Percent(59),
                 Text = "Note Name:"
             };
-
+            TagsList = new TagsList(this) { X = Pos.Right(nameLabel) + 1, Height = Dim.Fill(), Width = Dim.Percent(20) };
+            TagsList.UpdateList();
             nameView = new TextField
             {
                 Y = Pos.Bottom(nameLabel),
                 X = Pos.Right(saveButton) + 1,
                 //ColorScheme = color,
-                Width = Dim.Fill(),
+                Width = Dim.Percent(59),
                 Height = 1,
                 ColorScheme = Colors.Base,
             };
@@ -118,8 +112,10 @@ namespace Relanota.TUI
                 Y = Pos.Bottom(nameView) + 1,
                 X = Pos.Right(saveButton) + 1,
                 Height = 1,
-                Width = Dim.Fill(),
+                Width = Dim.Percent(59),
+                //Width = Dim.Fill(),
             };
+
 
             contentView = new TextView
             {
@@ -128,17 +124,51 @@ namespace Relanota.TUI
                 //ColorScheme = color,
                 TextAlignment = TextAlignment.Left,
                 Height = Dim.Fill(),
-                Width = Dim.Fill(),
+                Width = Dim.Percent(59),
+                //Width = Dim.Fill(),
                 ColorScheme = Colors.Dialog,
             };
 
+            Label tagLabel = new Label { Text = "Add Tag:", X=Pos.X(TagsList), Y=Pos.Bottom(TagsList) + 2, Width = Dim.Percent(20) };
 
-            this.Add(newButton, saveButton, notesLabel, searchLabel, searchField, NotesList, nameLabel, contentLabel, nameView, contentView);
-        }
+            TextField addTagField = new TextField { Y = Pos.Bottom(tagLabel), Width = Dim.Percent(20), X = Pos.X(tagLabel) };
 
-        private void Relanota_KeyDown(KeyEventEventArgs obj)
-        {
+            addTagField.KeyPress += (e) =>
+            {
+                if (e.KeyEvent.Key == Key.Enter)
+                {
+                    string name = addTagField.Text.ToString()?.Trim();
+                    if (string.IsNullOrWhiteSpace(name)) return;
 
+                    using (Database context = new Database())
+                    {
+                        if (context.TryGetTag(name, out Tag tag) && tag != null)
+                        {
+                            if (Note != null)
+                            {
+                                Note.AddTag(tag, context);
+                            }
+                        } else
+                        {
+                            tag = new Tag()
+                            {
+                                Name = name,
+                                Description = "",
+                            };
+                            tag.Save(context);
+                            if (Note != null)
+                            {
+                                Note.AddTag(tag, context);
+                            }
+                        }
+                        
+                    }
+                }
+            };
+
+            TagsList.Height = Dim.Fill() - tagLabel.Height - addTagField.Height - Dim.Sized(2);
+
+            this.Add(newButton, saveButton, notesLabel, searchLabel, searchField, NotesList, nameLabel, contentLabel, nameView, contentView, TagsList, tagLabel,addTagField);
         }
 
         public void New()
@@ -173,7 +203,9 @@ namespace Relanota.TUI
             {
                 if (Note != null && context.Notes.Any(n => n.Key == Note.Key))
                 {
-                    if (!context.Notes.First(n => n.Key == Note.Key).Content.Equals(contentView.Text.ToString()?.Trim(), StringComparison.InvariantCultureIgnoreCase))
+                    string content = Regex.Replace(contentView.Text.ToString()?.Trim(), @"\r\n?|\n", "\n");
+                    string actualNote = Regex.Replace(context.Notes.First(n => n.Key == Note.Key).Content.Trim(), @"\r\n?|\n", "\n");
+                    if (!content.Equals(actualNote, StringComparison.InvariantCultureIgnoreCase))
                     {
                         Dialog dialog = new Dialog("Unsaved Changes", yesButton, noButton, cancelButton)
                         {
@@ -243,8 +275,13 @@ namespace Relanota.TUI
         public void LoadNote(Note note)
         {
             Note = note;
+            if (note == null)
+            {
+                TagsList.UpdateList();
+                NotesList.UpdateList();
+            }
             nameView.Text = note?.Name ?? "";
-            contentView.Text = Regex.Replace(note?.Content ?? "", @"(\r\n|\r|\n)", "\n");
+            contentView.Text = Regex.Replace(note?.Content ?? "", @"\r\n?|\n", "\n");
         }
     }
 }
